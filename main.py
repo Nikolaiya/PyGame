@@ -14,7 +14,10 @@ BLACK = (0, 0, 0)
 
 TEXTURES = {
     "background": pygame.image.load("fon.png"),
-    "wall": [pygame.image.load(f"steni{i}.png") for i in range(1, 5)],
+    "wall": pygame.image.load("steni1.png"),
+    "wall2": pygame.image.load("steni2.png"),
+    "wall3": pygame.image.load("steni3.png"),
+    "wall4": pygame.image.load("steni4.png"),
     "unbreakable_wall": pygame.image.load("neraz.png"),
     "grass": pygame.image.load("trava.png"),
     "base": pygame.image.load("gerb.png"),
@@ -46,20 +49,23 @@ def generate_field(rows, cols):
         line = []
         for col in range(cols):
             if row == 0 or row == rows - 1 or col == 0 or col == cols - 1:
-                line.append("unbreakable_wall")
+                line.append({"type": "unbreakable_wall", "durability": -1})
             else:
-                tile = random.choices([None, "grass", "wall"], weights=[70, 15, 15])[0]
+                tile = random.choices(
+                    [None, {"type": "grass", "durability": 0}, {"type": "wall", "durability": 4}],
+                    weights=[70, 15, 15]
+                )[0]
                 line.append(tile)
         field.append(line)
 
     base_row, base_col = rows - 2, cols // 2
-    field[base_row][base_col] = "base"
 
     for dr in range(-2, 3):
         for dc in range(-2, 3):
             r, c = base_row + dr, base_col + dc
-            if 0 <= r < rows and 0 <= c < cols and (dr != 0 or dc != 0):
-                field[r][c] = None
+            if 0 <= r < rows and 0 <= c < cols:
+                if field[r][c] and field[r][c]["type"] != "unbreakable_wall":
+                    field[r][c] = None
 
     protection_scheme = [
         (-1, -1, "wall"), (-1, 0, "wall"), (-1, 1, "wall"),
@@ -67,16 +73,17 @@ def generate_field(rows, cols):
         (1, -1, "unbreakable_wall"), (1, 0, "unbreakable_wall"), (1, 1, "unbreakable_wall"),
         (2, -1, "unbreakable_wall"), (2, 0, "unbreakable_wall"), (2, 1, "unbreakable_wall"),
     ]
-    for dr, dc, tile in protection_scheme:
+    for dr, dc, tile_type in protection_scheme:
         r, c = base_row + dr, base_col + dc
         if 0 <= r < rows and 0 <= c < cols:
-            field[r][c] = tile
+            if tile_type == "wall":
+                field[r][c] = {"type": "wall", "durability": 4}
+            elif tile_type == "unbreakable_wall":
+                field[r][c] = {"type": "unbreakable_wall", "durability": -1}
 
-    player_tank_row, player_tank_col = base_row, base_col - 2
-    field[player_tank_row + 1][player_tank_col] = "unbreakable_wall"
-    field[player_tank_row + 1][player_tank_col + 4] = "unbreakable_wall"
+    field[base_row][base_col] = {"type": "base", "durability": -1}
 
-    return field, [player_tank_row, player_tank_col]
+    return field, [base_row, base_col - 2]
 
 
 def draw_field(field, player_pos, player_direction):
@@ -84,20 +91,17 @@ def draw_field(field, player_pos, player_direction):
         for col_idx, tile in enumerate(row):
             x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
             screen.blit(TEXTURES["background"], (x, y))
-            if tile and tile != "grass" and (row_idx, col_idx) != tuple(player_pos):
-                if tile == "wall":
-                    screen.blit(TEXTURES["wall"][0], (x, y))
-                elif tile == "unbreakable_wall":
-                    screen.blit(TEXTURES["unbreakable_wall"], (x, y))
-                elif tile == "base":
-                    screen.blit(TEXTURES["base"], (x, y))
+
+            if tile and tile["type"] != "grass":
+                if tile["type"] in TEXTURES:
+                    screen.blit(TEXTURES[tile["type"]], (x, y))
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
 
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
-            if tile == "grass":
+            if tile and tile["type"] == "grass":
                 x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
                 screen.blit(TEXTURES["grass"], (x, y))
 
@@ -131,6 +135,32 @@ def main():
         "player_tank_left": (-1, 0, "bullet_left"),
         "player_tank_right": (1, 0, "bullet_right"),
     }
+
+    def handle_bullet_collision(bullet_x, bullet_y):
+        col = bullet_x // CELL_SIZE
+        row = bullet_y // CELL_SIZE
+
+        if 0 <= row < len(field) and 0 <= col < len(field[0]):
+            tile = field[row][col]
+
+            if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
+                tile["durability"] -= 1
+
+                if tile["durability"] == 3:
+                    tile["type"] = "wall2"
+                elif tile["durability"] == 2:
+                    tile["type"] = "wall3"
+                elif tile["durability"] == 1:
+                    tile["type"] = "wall4"
+                elif tile["durability"] <= 0:
+                    field[row][col] = None
+
+                return True
+
+            elif tile and tile["type"] == "unbreakable_wall":
+                return True
+
+        return False
 
     running = True
     while running:
@@ -166,14 +196,17 @@ def main():
             player_direction = "player_tank_right"
 
         new_pos = [player_pos[0] + dy, player_pos[1] + dx]
-        if 0 <= new_pos[0] < rows and 0 <= new_pos[1] < cols and field[new_pos[0]][new_pos[1]] not in (
-        "wall", "unbreakable_wall"):
-            player_pos = new_pos
+        if 0 <= new_pos[0] < rows and 0 <= new_pos[1] < cols:
+            tile = field[new_pos[0]][new_pos[1]]
+            if not tile or tile["type"] in ["grass", "base"]:
+                player_pos = new_pos
 
         if bullet:
             bullet["x"] += bullet["direction"][0] * 10
             bullet["y"] += bullet["direction"][1] * 10
-            if bullet["x"] < 0 or bullet["x"] > FIELD_WIDTH or bullet["y"] < 0 or bullet["y"] > FIELD_HEIGHT:
+            if handle_bullet_collision(bullet["x"], bullet["y"]):
+                bullet = None
+            elif bullet["x"] < 0 or bullet["x"] > FIELD_WIDTH or bullet["y"] < 0 or bullet["y"] > FIELD_HEIGHT:
                 bullet = None
 
         screen.fill(WHITE)
