@@ -137,6 +137,7 @@ def main():
     }
 
     def handle_bullet_collision(bullet_x, bullet_y):
+        nonlocal enemies, enemy_tanks
         col = bullet_x // CELL_SIZE
         row = bullet_y // CELL_SIZE
 
@@ -145,7 +146,6 @@ def main():
 
             if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
                 tile["durability"] -= 1
-
                 if tile["durability"] == 3:
                     tile["type"] = "wall2"
                 elif tile["durability"] == 2:
@@ -154,13 +154,36 @@ def main():
                     tile["type"] = "wall4"
                 elif tile["durability"] <= 0:
                     field[row][col] = None
-
                 return True
 
             elif tile and tile["type"] == "unbreakable_wall":
                 return True
 
+            for enemy in enemies:
+                if enemy["row"] == row and enemy["col"] == col:
+                    enemies.remove(enemy)
+                    enemy_tanks -= 1
+                    if enemy_tanks > 0 and len(enemies) == 0:
+                        spawn_enemy()
+
+                    return True
+
         return False
+
+    enemies = []
+    last_spawn_time = time.time()
+
+    def spawn_enemy():
+        nonlocal enemies
+        if len(enemies) < 5 and enemy_tanks > 0:
+            while True:
+                row = random.randint(0, 2)
+                col = random.randint(0, cols - 1)
+                if field[row][col] is None and [row, col] != player_pos:
+                    enemies.append({"row": row, "col": col})
+                    break
+
+    spawn_enemy()
 
     running = True
     while running:
@@ -179,6 +202,9 @@ def main():
                         "texture": direction[2],
                     }
                     last_shot_time = current_time
+
+        if enemy_tanks <= 0:
+            running = False
 
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
@@ -199,7 +225,14 @@ def main():
         if 0 <= new_pos[0] < rows and 0 <= new_pos[1] < cols:
             tile = field[new_pos[0]][new_pos[1]]
             if not tile or tile["type"] in ["grass", "base"]:
-                player_pos = new_pos
+                collision_with_enemy = False
+                for enemy in enemies:
+                    if enemy["row"] == new_pos[0] and enemy["col"] == new_pos[1]:
+                        collision_with_enemy = True
+                        break
+
+                if not collision_with_enemy:
+                    player_pos = new_pos
 
         if bullet:
             bullet["x"] += bullet["direction"][0] * 10
@@ -209,12 +242,20 @@ def main():
             elif bullet["x"] < 0 or bullet["x"] > FIELD_WIDTH or bullet["y"] < 0 or bullet["y"] > FIELD_HEIGHT:
                 bullet = None
 
+        if time.time() - last_spawn_time >= 10:
+            spawn_enemy()
+            last_spawn_time = time.time()
+
         screen.fill(WHITE)
         draw_field(field, player_pos, player_direction)
         draw_interface(lives, enemy_tanks)
 
         if bullet:
             screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
+
+        for enemy in enemies:
+            x, y = enemy["col"] * CELL_SIZE, enemy["row"] * CELL_SIZE
+            screen.blit(TEXTURES["enemy_tank"], (x, y))
 
         pygame.display.flip()
         clock.tick(FPS)
