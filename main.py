@@ -21,6 +21,7 @@ TEXTURES = {
     "unbreakable_wall": pygame.image.load("neraz.png"),
     "grass": pygame.image.load("trava.png"),
     "base": pygame.image.load("gerb.png"),
+    "water": pygame.image.load("voda.png"),
     "player_tank_up": pygame.image.load("tank1_up.png"),
     "player_tank_down": pygame.image.load("tank1_down.png"),
     "player_tank_left": pygame.image.load("tank1_left.png"),
@@ -83,6 +84,23 @@ def generate_field(rows, cols):
 
     field[base_row][base_col] = {"type": "base", "durability": -1}
 
+    water_tiles = 0
+    while water_tiles < 6:
+        row = random.randint(1, rows - 2)
+        col = random.randint(1, cols - 2)
+        if field[row][col] is None:
+            field[row][col] = {"type": "water", "durability": -1}
+            water_tiles += 1
+
+    unbreakable = 0
+    while unbreakable < 6:
+        row = random.randint(1, rows - 2)
+        col = random.randint(1, cols - 2)
+        if field[row][col] is None:
+            field[row][col] = {"type": "unbreakable_wall", "durability": -1}
+            unbreakable += 1
+
+
     return field, [base_row, base_col - 2]
 
 
@@ -98,6 +116,7 @@ def draw_field(field, player_pos, player_direction):
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
+
 
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
@@ -143,7 +162,6 @@ def main():
 
         if 0 <= row < len(field) and 0 <= col < len(field[0]):
             tile = field[row][col]
-
             if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
                 tile["durability"] -= 1
                 if tile["durability"] == 3:
@@ -159,14 +177,11 @@ def main():
             elif tile and tile["type"] == "unbreakable_wall":
                 return True
 
-            for enemy in enemies:
-                if enemy["row"] == row and enemy["col"] == col:
-                    enemies.remove(enemy)
-                    enemy_tanks -= 1
-                    if enemy_tanks > 0 and len(enemies) == 0:
-                        spawn_enemy()
-
-                    return True
+        for enemy in enemies[:]:
+            if enemy["row"] == row and enemy["col"] == col:
+                enemies.remove(enemy)
+                enemy_tanks -= 1
+                return True
 
         return False
 
@@ -174,14 +189,15 @@ def main():
     last_spawn_time = time.time()
 
     def spawn_enemy():
-        nonlocal enemies
+        nonlocal enemies, enemy_tanks
         if len(enemies) < 5 and enemy_tanks > 0:
             while True:
                 row = random.randint(0, 2)
                 col = random.randint(0, cols - 1)
                 if field[row][col] is None and [row, col] != player_pos:
-                    enemies.append({"row": row, "col": col})
-                    break
+                    if not any(e["row"] == row and e["col"] == col for e in enemies):
+                        enemies.append({"row": row, "col": col})
+                        break
 
     spawn_enemy()
 
@@ -242,7 +258,9 @@ def main():
             elif bullet["x"] < 0 or bullet["x"] > FIELD_WIDTH or bullet["y"] < 0 or bullet["y"] > FIELD_HEIGHT:
                 bullet = None
 
-        if time.time() - last_spawn_time >= 10:
+
+
+        if time.time() - last_spawn_time >= 3:
             spawn_enemy()
             last_spawn_time = time.time()
 
