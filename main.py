@@ -92,7 +92,8 @@ def generate_field(rows, cols):
     while water_tiles < 6:
         row = random.randint(1, rows - 2)
         col = random.randint(1, cols - 2)
-        if field[row][col] is None and not (base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
+        if field[row][col] is None and not (
+                base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
             field[row][col] = {"type": "water", "durability": -1}
             water_tiles += 1
 
@@ -100,7 +101,8 @@ def generate_field(rows, cols):
     while unbreakable < 6:
         row = random.randint(1, rows - 2)
         col = random.randint(1, cols - 2)
-        if field[row][col] is None and not (base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
+        if field[row][col] is None and not (
+                base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
             field[row][col] = {"type": "unbreakable_wall", "durability": -1}
             unbreakable += 1
 
@@ -204,7 +206,6 @@ def main():
             elif tile and tile["type"] == "unbreakable_wall":
                 return True
 
-
         return False
 
     def is_collision(new_pos):
@@ -285,7 +286,6 @@ def main():
         clock.tick(FPS)
 
     pygame.quit()
-
 
 
 if __name__ == "__main__":
