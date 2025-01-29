@@ -117,20 +117,20 @@ def draw_field(field, player_pos, player_direction):
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-            screen.blit(TEXTURES["background"], (x, y))
+            screen.blit(TEXTURES["background"], (x, y))  # Фон
 
-            if tile and tile["type"] != "grass":
-                if tile["type"] in TEXTURES:
-                    screen.blit(TEXTURES[tile["type"]], (x, y))
+            if tile and tile["type"] and tile["type"] != "grass":
+                screen.blit(TEXTURES[tile["type"]], (x, y))  # Твердые объекты
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
 
+    # Отдельный проход для травы
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             if tile and tile["type"] == "grass":
                 x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-                screen.blit(TEXTURES["grass"], (x, y))
+                screen.blit(TEXTURES["grass"], (x, y))  # Трава поверх
 
 
 def draw_interface(lives, enemy_tanks):
@@ -213,6 +213,7 @@ def main():
     last_shot_time = 0
     tank_speed = 3
     player_direction = "player_tank_up"
+    TOLERANCE = 1
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -247,21 +248,22 @@ def main():
     def is_collision(new_pos):
         tank_x = new_pos[1] * CELL_SIZE
         tank_y = new_pos[0] * CELL_SIZE
+        tank_rect = pygame.Rect(tank_x, tank_y, CELL_SIZE, CELL_SIZE)
 
-        corners = [
-            (tank_x, tank_y),
-            (tank_x + CELL_SIZE - 1, tank_y),
-            (tank_x, tank_y + CELL_SIZE - 1),
-            (tank_x + CELL_SIZE - 1, tank_y + CELL_SIZE - 1),
-        ]
-
-        for corner_x, corner_y in corners:
-            col = int(corner_x // CELL_SIZE)
-            row = int(corner_y // CELL_SIZE)
-            if 0 <= row < rows and 0 <= col < cols:
-                tile = field[row][col]
+        for row_idx, row in enumerate(field):
+            for col_idx, tile in enumerate(row):
                 if tile and tile["type"] not in ["grass", "base"]:
-                    return True
+                    tile_rect = pygame.Rect(
+                        col_idx * CELL_SIZE, row_idx * CELL_SIZE, CELL_SIZE, CELL_SIZE
+                    )
+                    if tank_rect.colliderect(tile_rect):
+                        # Проверяем, зажало ли танк по горизонтали или вертикали
+                        if abs(tank_rect.left - tile_rect.right) <= TOLERANCE or \
+                                abs(tank_rect.right - tile_rect.left) <= TOLERANCE or \
+                                abs(tank_rect.top - tile_rect.bottom) <= TOLERANCE or \
+                                abs(tank_rect.bottom - tile_rect.top) <= TOLERANCE:
+                            continue  # Игнорируем, если зазор в пределах допуска
+                        return True
         return False
 
     running = True
