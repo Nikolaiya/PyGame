@@ -117,20 +117,19 @@ def draw_field(field, player_pos, player_direction):
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-            screen.blit(TEXTURES["background"], (x, y))  # Фон
+            screen.blit(TEXTURES["background"], (x, y))
 
             if tile and tile["type"] and tile["type"] != "grass":
-                screen.blit(TEXTURES[tile["type"]], (x, y))  # Твердые объекты
+                screen.blit(TEXTURES[tile["type"]], (x, y))
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
 
-    # Отдельный проход для травы
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             if tile and tile["type"] == "grass":
                 x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-                screen.blit(TEXTURES["grass"], (x, y))  # Трава поверх
+                screen.blit(TEXTURES["grass"], (x, y))
 
 
 def draw_interface(lives, enemy_tanks):
@@ -153,6 +152,9 @@ def spawn_enemy(field):
         "col": col,
         "direction": (0, 1),
         "texture": "enemy_tank_down",
+        "x": col * CELL_SIZE,
+        "y": row * CELL_SIZE,
+        "speed": 2,
     }
 
 
@@ -191,29 +193,22 @@ def move_enemy(enemy, field, enemies):
 
 
 def main():
+    running = True
     clock = pygame.time.Clock()
     rows, cols = FIELD_HEIGHT // CELL_SIZE, FIELD_WIDTH // CELL_SIZE
     field, player_pos = generate_field(rows, cols)
     lives = 3
-    enemies = [
-        {
-            "row": random.randint(0, 2),
-            "col": random.randint(1, cols - 2),
-            "x": random.randint(1, cols - 2) * CELL_SIZE,
-            "y": random.randint(0, 2) * CELL_SIZE,
-            "direction": (0, 1),
-            "texture": "enemy_tank_down",
-            "speed": 2,
-        }
-        for _ in range(5)
-    ]
+    enemy_tanks_count = 3
+    max_enemy_on_field = 5
+    enemies = []
     enemy_spawn_timer = 5
     last_spawn_time = time.time()
     bullet = None
     last_shot_time = 0
-    tank_speed = 3
+    tank_speed = 3  # нормальное значение 3
     player_direction = "player_tank_up"
-    TOLERANCE = 1
+    tolerance = 1  # нормальное значение 1
+    game_over = False
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -222,9 +217,29 @@ def main():
         "player_tank_right": (1, 0, "bullet_right"),
     }
 
-    def handle_bullet_collision(bullet_x, bullet_y):
-        col = bullet_x // CELL_SIZE
-        row = bullet_y // CELL_SIZE
+    base_row, base_col = rows - 2, cols // 2
+    emblem_rect = pygame.Rect(base_col * CELL_SIZE, base_row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+
+    def handle_bullet_collision(bullet_x, bullet_y, enemies):
+        nonlocal enemy_tanks_count, game_over
+        col = int(bullet_x // CELL_SIZE)
+        row = int(bullet_y // CELL_SIZE)
+
+        for enemy in enemies:
+            enemy_x = enemy["x"]
+            enemy_y = enemy["y"]
+            enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
+            bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
+
+            if bullet_rect.colliderect(enemy_rect):
+                enemy_tanks_count -= 1
+                enemies.remove(enemy)
+                return True
+
+        bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
+        if bullet_rect.colliderect(emblem_rect):
+            game_over = True
+            return True
 
         if 0 <= row < len(field) and 0 <= col < len(field[0]):
             tile = field[row][col]
@@ -245,10 +260,17 @@ def main():
 
         return False
 
-    def is_collision(new_pos):
+    def is_collision(new_pos, enemies):
         tank_x = new_pos[1] * CELL_SIZE
         tank_y = new_pos[0] * CELL_SIZE
         tank_rect = pygame.Rect(tank_x, tank_y, CELL_SIZE, CELL_SIZE)
+
+        for enemy in enemies:
+            enemy_x = enemy["x"]
+            enemy_y = enemy["y"]
+            enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
+            if tank_rect.colliderect(enemy_rect):
+                return True
 
         for row_idx, row in enumerate(field):
             for col_idx, tile in enumerate(row):
@@ -257,17 +279,19 @@ def main():
                         col_idx * CELL_SIZE, row_idx * CELL_SIZE, CELL_SIZE, CELL_SIZE
                     )
                     if tank_rect.colliderect(tile_rect):
-                        # Проверяем, зажало ли танк по горизонтали или вертикали
-                        if abs(tank_rect.left - tile_rect.right) <= TOLERANCE or \
-                                abs(tank_rect.right - tile_rect.left) <= TOLERANCE or \
-                                abs(tank_rect.top - tile_rect.bottom) <= TOLERANCE or \
-                                abs(tank_rect.bottom - tile_rect.top) <= TOLERANCE:
-                            continue  # Игнорируем, если зазор в пределах допуска
+                        if abs(tank_rect.left - tile_rect.right) <= tolerance or \
+                                abs(tank_rect.right - tile_rect.left) <= tolerance or \
+                                abs(tank_rect.top - tile_rect.bottom) <= tolerance or \
+                                abs(tank_rect.bottom - tile_rect.top) <= tolerance:
+                            continue
                         return True
         return False
 
-    running = True
     while running:
+        if game_over:
+            running = False
+            continue
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -301,17 +325,19 @@ def main():
             player_direction = "player_tank_right"
 
         new_pos = [player_pos[0] + dy / CELL_SIZE, player_pos[1] + dx / CELL_SIZE]
-        if not is_collision(new_pos):
+        if not is_collision(new_pos, enemies):
             player_pos[0] += dy / CELL_SIZE
             player_pos[1] += dx / CELL_SIZE
 
         current_time = time.time()
-        if not enemies or (current_time - last_spawn_time >= enemy_spawn_timer):
+        if len(enemies) < max_enemy_on_field and (current_time - last_spawn_time >= enemy_spawn_timer):
+            row = random.randint(0, 2)
+            col = random.randint(1, cols - 2)
             enemies.append({
-                "row": random.randint(0, 2),
-                "col": random.randint(1, cols - 2),
-                "x": random.randint(1, cols - 2) * CELL_SIZE,
-                "y": random.randint(0, 2) * CELL_SIZE,
+                "row": row,
+                "col": col,
+                "x": col * CELL_SIZE,
+                "y": row * CELL_SIZE,
                 "direction": (0, 1),
                 "texture": "enemy_tank_down",
                 "speed": 2,
@@ -324,20 +350,23 @@ def main():
         if bullet:
             bullet["x"] += bullet["direction"][0] * 10
             bullet["y"] += bullet["direction"][1] * 10
-            if handle_bullet_collision(bullet["x"], bullet["y"]):
+            if handle_bullet_collision(bullet["x"], bullet["y"], enemies):
                 bullet = None
             elif not (0 <= bullet["x"] < FIELD_WIDTH and 0 <= bullet["y"] < FIELD_HEIGHT):
                 bullet = None
 
         screen.fill(WHITE)
         draw_field(field, player_pos, player_direction)
-        draw_interface(lives, len(enemies))
+        draw_interface(lives, enemy_tanks_count)
 
         if bullet:
             screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
 
         for enemy in enemies:
             screen.blit(TEXTURES[enemy["texture"]], (enemy["x"], enemy["y"]))
+
+        if enemy_tanks_count == 0:
+            game_over = True
 
         pygame.display.flip()
         clock.tick(FPS)
