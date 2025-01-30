@@ -144,52 +144,87 @@ def draw_interface(lives, enemy_tanks):
         screen.blit(TEXTURES["life_icon"], (x, y))
 
 
-def spawn_enemy(field):
-    row = random.randint(0, 2)
-    col = random.randint(1, len(field[0]) - 2)
-    return {
-        "row": row,
-        "col": col,
-        "direction": (0, 1),
-        "texture": "enemy_tank_down",
-        "x": col * CELL_SIZE,
-        "y": row * CELL_SIZE,
-        "speed": 2,
-    }
+def spawn_enemy(field, enemies):
+    while True:
+        row = random.randint(0, 2)
+        col = random.randint(1, len(field[0]) - 2)
+
+        if field[row][col] is None and not any(e["row"] == row and e["col"] == col for e in enemies):
+            tile = field[row][col]
+            if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4", "unbreakable_wall", "water"]:
+                continue
+
+            return {
+                "row": row,
+                "col": col,
+                "direction": (0, 1),
+                "texture": "enemy_tank_down",
+                "x": col * CELL_SIZE,
+                "y": row * CELL_SIZE,
+                "speed": 3,
+                "move_timer": random.uniform(2, 5),
+            }
 
 
-def move_enemy(enemy, field, enemies):
+def move_enemy(enemy, field, enemies, player_pos, delta_time):
     directions = {
-        (0, -1): "enemy_tank_left",
-        (0, 1): "enemy_tank_right",
-        (-1, 0): "enemy_tank_up",
-        (1, 0): "enemy_tank_down",
+        (-1, 0): "enemy_tank_left",
+        (1, 0): "enemy_tank_right",
+        (0, -1): "enemy_tank_up",
+        (0, 1): "enemy_tank_down",
     }
 
-    if random.random() < 0.1:
+    if "direction" not in enemy:
         enemy["direction"] = random.choice(list(directions.keys()))
+        print(f"Spawning enemy with direction: {enemy['direction']}")
+        enemy["move_timer"] = time.time()
 
     dx, dy = enemy["direction"]
-    new_row = enemy["row"] + dy
-    new_col = enemy["col"] + dx
-    new_x = enemy["x"] + dx * enemy["speed"]
-    new_y = enemy["y"] + dy * enemy["speed"]
+    move_distance = enemy["speed"] * delta_time
+    new_x = enemy["x"] + dx * move_distance
+    new_y = enemy["y"] + dy * move_distance
 
-    if (
-            0 <= new_row < len(field)
-            and 0 <= new_col < len(field[0])
-            and not field[new_row][new_col]
-    ):
-        collision = any(
-            other_enemy["row"] == new_row and other_enemy["col"] == new_col
-            for other_enemy in enemies
-            if other_enemy != enemy
-        )
-        if not collision:
-            enemy["x"], enemy["y"] = new_x, new_y
-            enemy["row"], enemy["col"] = int(enemy["y"] // CELL_SIZE), int(enemy["x"] // CELL_SIZE)
+    if not is_enemy_collision(enemy, new_x, new_y, enemies, player_pos, field):
+        enemy["x"], enemy["y"] = new_x, new_y
+        enemy["row"] = int(enemy["y"] // CELL_SIZE)
+        enemy["col"] = int(enemy["x"] // CELL_SIZE)
+        enemy["texture"] = directions[enemy["direction"]]
+    else:
+        enemy["texture"] = directions[enemy["direction"]]
 
-    enemy["texture"] = directions[enemy["direction"]]
+
+def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tolerance=1):
+    enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
+
+    if (enemy_x < 0 or enemy_x >= FIELD_WIDTH - CELL_SIZE or
+            enemy_y < 0 or enemy_y >= FIELD_HEIGHT - CELL_SIZE):
+        return True
+
+    for other_enemy in enemies:
+        if other_enemy is enemy:
+            continue
+        other_rect = pygame.Rect(other_enemy["x"], other_enemy["y"], CELL_SIZE, CELL_SIZE)
+        if enemy_rect.colliderect(other_rect):
+            return True
+
+    player_x, player_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
+    player_rect = pygame.Rect(player_x, player_y, CELL_SIZE, CELL_SIZE)
+    if enemy_rect.colliderect(player_rect):
+        return True
+
+    for row_idx, row in enumerate(field):
+        for col_idx, tile in enumerate(row):
+            if tile and tile["type"] not in ["grass", "base"]:
+                tile_rect = pygame.Rect(col_idx * CELL_SIZE, row_idx * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                if enemy_rect.colliderect(tile_rect):
+                    if (abs(enemy_rect.left - tile_rect.right) <= tolerance or
+                            abs(enemy_rect.right - tile_rect.left) <= tolerance or
+                            abs(enemy_rect.top - tile_rect.bottom) <= tolerance or
+                            abs(enemy_rect.bottom - tile_rect.top) <= tolerance):
+                        continue
+                    return True
+
+    return False
 
 
 def main():
@@ -205,9 +240,9 @@ def main():
     last_spawn_time = time.time()
     bullet = None
     last_shot_time = 0
-    tank_speed = 3  # нормальное значение 3
+    tank_speed = 3
     player_direction = "player_tank_up"
-    tolerance = 1  # нормальное значение 1
+    tolerance = 1
     game_over = False
 
     directions_map = {
@@ -331,21 +366,30 @@ def main():
 
         current_time = time.time()
         if len(enemies) < max_enemy_on_field and (current_time - last_spawn_time >= enemy_spawn_timer):
-            row = random.randint(0, 2)
-            col = random.randint(1, cols - 2)
-            enemies.append({
-                "row": row,
-                "col": col,
-                "x": col * CELL_SIZE,
-                "y": row * CELL_SIZE,
-                "direction": (0, 1),
-                "texture": "enemy_tank_down",
-                "speed": 2,
-            })
-            last_spawn_time = current_time
+            spawn_success = False
+            attempts = 0
+            while not spawn_success and attempts < 100:
+                row = random.randint(1, 3)
+                col = random.randint(1, cols - 2)
+
+                if field[row][col] is None or \
+                        (field[row][col]["type"] == "grass") or \
+                        (field[row][col]["type"] == "water"):
+                    enemies.append({
+                        "row": row,
+                        "col": col,
+                        "x": col * CELL_SIZE,
+                        "y": row * CELL_SIZE,
+                        "direction": (0, 1),
+                        "texture": "enemy_tank_down",
+                        "speed": 3,
+                    })
+                    last_spawn_time = current_time
+                    spawn_success = True
+                attempts += 1
 
         for enemy in enemies:
-            move_enemy(enemy, field, enemies)
+            move_enemy(enemy, field, enemies, player_pos, delta_time=1)
 
         if bullet:
             bullet["x"] += bullet["direction"][0] * 10
