@@ -14,14 +14,14 @@ BLACK = (0, 0, 0)
 
 TEXTURES = {
     "background": pygame.image.load("fon.png"),
-    "wall": pygame.image.load("steni1.png"),
-    "wall2": pygame.image.load("steni2.png"),
-    "wall3": pygame.image.load("steni3.png"),
-    "wall4": pygame.image.load("steni4.png"),
-    "unbreakable_wall": pygame.image.load("neraz.png"),
-    "grass": pygame.image.load("trava.png"),
+    "wall": pygame.image.load("steni1(nov).png"),
+    "wall2": pygame.image.load("steni2(nov).png"),
+    "wall3": pygame.image.load("steni3(nov).png"),
+    "wall4": pygame.image.load("steni4(nov).png"),
+    "unbreakable_wall": pygame.image.load("neraz(nov).png"),
+    "grass": pygame.image.load("trava(nov).png"),
     "base": pygame.image.load("gerb.png"),
-    "water": pygame.image.load("voda.png"),
+    "water": pygame.image.load("voda(nov).png"),
     "player_tank_up": pygame.image.load("tank1_up.png"),
     "player_tank_down": pygame.image.load("tank1_down.png"),
     "player_tank_left": pygame.image.load("tank1_left.png"),
@@ -30,6 +30,14 @@ TEXTURES = {
     "enemy_tank_down": pygame.image.load("tank2_down.png"),
     "enemy_tank_left": pygame.image.load("tank2_left.png"),
     "enemy_tank_right": pygame.image.load("tank2_right.png"),
+    "player_tank_up2": pygame.image.load("tank1_up2.png"),
+    "player_tank_down2": pygame.image.load("tank1_down2.png"),
+    "player_tank_left2": pygame.image.load("tank1_left2.png"),
+    "player_tank_right2": pygame.image.load("tank1_right2.png"),
+    "enemy_tank_up2": pygame.image.load("tank2_up2.png"),
+    "enemy_tank_down2": pygame.image.load("tank2_down2.png"),
+    "enemy_tank_left2": pygame.image.load("tank2_left2.png"),
+    "enemy_tank_right2": pygame.image.load("tank2_right2.png"),
     "enemy_tank": pygame.image.load("tank2_up.png"),
     "enemy_icon": pygame.image.load("minitank.png"),
     "life_icon": pygame.image.load("serdce.png"),
@@ -234,7 +242,7 @@ def main():
     field, player_pos = generate_field(rows, cols)
     lives = 3
     enemy_tanks_count = 3
-    max_enemy_on_field = 5
+    max_enemy_on_field = 0
     enemies = []
     enemy_spawn_timer = 5
     last_spawn_time = time.time()
