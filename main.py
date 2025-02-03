@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+import logging
 
 pygame.init()
 
@@ -45,6 +46,10 @@ TEXTURES = {
     "bullet_down": pygame.image.load("bullet_down.png"),
     "bullet_left": pygame.image.load("bullet_left.png"),
     "bullet_right": pygame.image.load("bullet_right.png"),
+    "enemy_bullet_up": pygame.image.load("enemy_bullet_up.png"),
+    "enemy_bullet_down": pygame.image.load("enemy_bullet_down.png"),
+    "enemy_bullet_left": pygame.image.load("enemy_bullet_left.png"),
+    "enemy_bullet_right": pygame.image.load("enemy_bullet_right.png"),
 }
 
 TEXTURES["enemy_icon"] = pygame.transform.scale(TEXTURES["enemy_icon"], (20, 20))
@@ -52,8 +57,6 @@ TEXTURES["life_icon"] = pygame.transform.scale(TEXTURES["life_icon"], (20, 20))
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Battle City Remake")
-
-FIRE_COOLDOWN = 0.5
 
 
 def generate_field(rows, cols):
@@ -160,30 +163,39 @@ def spawn_enemy(field, enemies):
         (0, 1): "enemy_tank_down",
     }
 
-    while True:
+    max_attempts = 100
+    attempts = 0
+
+    while attempts < max_attempts:
         row = random.randint(0, 2)
         col = random.randint(1, len(field[0]) - 2)
 
-        if field[row][col] is None and not any(e["row"] == row and e["col"] == col for e in enemies):
-            tile = field[row][col]
-            if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4", "unbreakable_wall", "water"]:
-                continue
+        tile = field[row][col]
 
-            direction = random.choice(list(directions.keys()))
+        if tile and tile["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
+            attempts += 1
+            continue
 
-            return {
-                "row": row,
-                "col": col,
-                "direction": direction,
-                "texture": directions[direction],
-                "x": col * CELL_SIZE,
-                "y": row * CELL_SIZE,
-                "speed": 3,
-                "move_timer": random.uniform(2, 5),
-                "change_dir_timer": time.time() + 5,
-            }
+        enemy_rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
+        if any(enemy_rect.colliderect(pygame.Rect(e["x"], e["y"], CELL_SIZE, CELL_SIZE)) for e in enemies):
+            attempts += 1
+            continue
 
+        direction = random.choice(list(directions.keys()))
+        return {
+            "row": row,
+            "col": col,
+            "direction": direction,
+            "texture": directions[direction],
+            "x": col * CELL_SIZE,
+            "y": row * CELL_SIZE,
+            "speed": 3,
+            "move_timer": random.uniform(2, 5),
+            "change_dir_timer": time.time() + 5,
+        }
+
+    return None
 
 
 def move_enemy(enemy, field, enemies, player_pos, delta_time):
@@ -222,7 +234,6 @@ def move_enemy(enemy, field, enemies, player_pos, delta_time):
             enemy["stuck_time"] = current_time + 1
 
 
-
 def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tolerance=1):
     enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
 
@@ -257,10 +268,6 @@ def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tole
     return False
 
 
-
-
-
-
 def main():
     running = True
     clock = pygame.time.Clock()
@@ -281,6 +288,7 @@ def main():
     enemy_bullets = {}
     FIRE_COOLDOWN = 2.0
     enemy_next_shot = {}
+    logging.basicConfig(level=logging.DEBUG)
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -297,21 +305,20 @@ def main():
         bullet_y = enemy["y"] + CELL_SIZE // 2
 
         direction_map = {
-            (0, -1): "bullet_up",
-            (0, 1): "bullet_down",
-            (-1, 0): "bullet_left",
-            (1, 0): "bullet_right",
+            (0, -1): ("enemy_bullet_up", (0, -1)),
+            (0, 1): ("enemy_bullet_down", (0, 1)),
+            (-1, 0): ("enemy_bullet_left", (-1, 0)),
+            (1, 0): ("enemy_bullet_right", (1, 0)),
         }
 
-        bullet_texture = direction_map.get(enemy["direction"], "bullet_up")
+        bullet_texture, bullet_direction = direction_map.get(enemy["direction"], ("enemy_bullet_up", (0, -1)))
 
         return {
             "x": bullet_x,
             "y": bullet_y,
-            "direction": enemy["direction"],
+            "direction": bullet_direction,
             "shooter": "enemy",
-            "texture": bullet_texture,
-            "last_shot_time": time.time()
+            "texture": bullet_texture
         }
 
     def update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot):
@@ -321,51 +328,42 @@ def main():
             enemy_id = id(enemy)
 
             if enemy_id not in enemy_next_shot:
-                enemy_next_shot[enemy_id] = current_time
+                enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
 
-            if enemy_id not in enemy_bullets or enemy_bullets[enemy_id] is None:
-                if current_time >= enemy_next_shot[enemy_id]:
-                    enemy_bullets[enemy_id] = enemy_fire(enemy)
+            if enemy_id in enemy_bullets and enemy_bullets[enemy_id] is not None:
+                bullet = enemy_bullets[enemy_id]
 
-        for enemy_id, bullet in list(enemy_bullets.items()):
-            if bullet is None:
+                bullet["x"] += bullet["direction"][0] * 10
+                bullet["y"] += bullet["direction"][1] * 10
+
+                if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
+                    enemy_bullets[enemy_id] = None
+                    enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
+                elif not (0 <= bullet["x"] < FIELD_WIDTH and 0 <= bullet["y"] < FIELD_HEIGHT):
+                    enemy_bullets[enemy_id] = None
+
                 continue
 
-            bullet["x"] += bullet["direction"][0] * 10
-            bullet["y"] += bullet["direction"][1] * 10
-
-            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
-                enemy_bullets[enemy_id] = None
-                enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
+            if current_time >= enemy_next_shot[enemy_id]:
+                new_bullet = enemy_fire(enemy)
+                if new_bullet:
+                    enemy_bullets[enemy_id] = new_bullet
+                    enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
 
     def handle_bullet_collision(bullet_x, bullet_y, enemies, bullet):
         if bullet is None:
             return False
 
-        nonlocal enemy_tanks_count, game_over
         col = int(bullet_x // CELL_SIZE)
         row = int(bullet_y // CELL_SIZE)
 
         bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
 
-        for enemy in enemies:
-            enemy_x = enemy["x"]
-            enemy_y = enemy["y"]
-            enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
-
-            if bullet_rect.colliderect(enemy_rect) and bullet["shooter"] != "enemy":
-                enemy_tanks_count -= 1
-                enemies.remove(enemy)
-                return True
-
-        if bullet_rect.colliderect(emblem_rect):
-            game_over = True
-            return True
-
         if 0 <= row < len(field) and 0 <= col < len(field[0]):
             tile = field[row][col]
             if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
-                tile["durability"] -= 1
+                tile["durability"] -= 1  # Уменьшаем прочность стены
+                logging.debug(f"Wall hit at ({row}, {col}). Durability: {tile['durability']}")
                 if tile["durability"] == 3:
                     tile["type"] = "wall2"
                 elif tile["durability"] == 2:
@@ -374,10 +372,18 @@ def main():
                     tile["type"] = "wall4"
                 elif tile["durability"] <= 0:
                     field[row][col] = None
+
                 return True
 
-            elif tile and tile["type"] == "unbreakable_wall":
+        for enemy in enemies:
+            enemy_rect = pygame.Rect(enemy["x"], enemy["y"], CELL_SIZE, CELL_SIZE)
+            if bullet_rect.colliderect(enemy_rect) and bullet["shooter"] != "enemy":
+                enemies.remove(enemy)
                 return True
+
+        if bullet_rect.colliderect(emblem_rect):
+            game_over = True
+            return True
 
         return False
 
@@ -418,7 +424,7 @@ def main():
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 current_time = time.time()
-                if bullet is None and current_time - last_shot_time >= FIRE_COOLDOWN:
+                if bullet is None and current_time - last_shot_time:
                     tank_x = int(player_pos[1] * CELL_SIZE)
                     tank_y = int(player_pos[0] * CELL_SIZE)
                     dx, dy = directions_map[player_direction][:2]
@@ -428,7 +434,7 @@ def main():
                         "direction": (dx, dy),
                         "texture": directions_map[player_direction][2],
                     }
-                    last_shot_time = current_time
+                    last_shot_time = time.time()
 
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
@@ -492,7 +498,7 @@ def main():
 
         for bullet in enemy_bullets.values():
             if bullet:
-                screen.blit(TEXTURES["bullet_up"], (bullet["x"], bullet["y"]))
+                screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
 
         if bullet:
             screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
