@@ -14,14 +14,14 @@ BLACK = (0, 0, 0)
 
 TEXTURES = {
     "background": pygame.image.load("fon.png"),
-    "wall": pygame.image.load("steni1.png"),
-    "wall2": pygame.image.load("steni2.png"),
-    "wall3": pygame.image.load("steni3.png"),
-    "wall4": pygame.image.load("steni4.png"),
-    "unbreakable_wall": pygame.image.load("neraz.png"),
-    "grass": pygame.image.load("trava.png"),
+    "wall": pygame.image.load("steni1(nov).png"),
+    "wall2": pygame.image.load("steni2(nov).png"),
+    "wall3": pygame.image.load("steni3(nov).png"),
+    "wall4": pygame.image.load("steni4(nov).png"),
+    "unbreakable_wall": pygame.image.load("neraz(nov).png"),
+    "grass": pygame.image.load("trava(nov).png"),
     "base": pygame.image.load("gerb.png"),
-    "water": pygame.image.load("voda.png"),
+    "water": pygame.image.load("voda(nov).png"),
     "player_tank_up": pygame.image.load("tank1_up.png"),
     "player_tank_down": pygame.image.load("tank1_down.png"),
     "player_tank_left": pygame.image.load("tank1_left.png"),
@@ -30,6 +30,14 @@ TEXTURES = {
     "enemy_tank_down": pygame.image.load("tank2_down.png"),
     "enemy_tank_left": pygame.image.load("tank2_left.png"),
     "enemy_tank_right": pygame.image.load("tank2_right.png"),
+    "player_tank_up2": pygame.image.load("tank1_up2.png"),
+    "player_tank_down2": pygame.image.load("tank1_down2.png"),
+    "player_tank_left2": pygame.image.load("tank1_left2.png"),
+    "player_tank_right2": pygame.image.load("tank1_right2.png"),
+    "enemy_tank_up2": pygame.image.load("tank2_up2.png"),
+    "enemy_tank_down2": pygame.image.load("tank2_down2.png"),
+    "enemy_tank_left2": pygame.image.load("tank2_left2.png"),
+    "enemy_tank_right2": pygame.image.load("tank2_right2.png"),
     "enemy_tank": pygame.image.load("tank2_up.png"),
     "enemy_icon": pygame.image.load("minitank.png"),
     "life_icon": pygame.image.load("serdce.png"),
@@ -145,6 +153,13 @@ def draw_interface(lives, enemy_tanks):
 
 
 def spawn_enemy(field, enemies):
+    directions = {
+        (-1, 0): "enemy_tank_left",
+        (1, 0): "enemy_tank_right",
+        (0, -1): "enemy_tank_up",
+        (0, 1): "enemy_tank_down",
+    }
+
     while True:
         row = random.randint(0, 2)
         col = random.randint(1, len(field[0]) - 2)
@@ -154,16 +169,21 @@ def spawn_enemy(field, enemies):
             if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4", "unbreakable_wall", "water"]:
                 continue
 
+            direction = random.choice(list(directions.keys()))
+
             return {
                 "row": row,
                 "col": col,
-                "direction": (0, 1),
-                "texture": "enemy_tank_down",
+                "direction": direction,
+                "texture": directions[direction],
                 "x": col * CELL_SIZE,
                 "y": row * CELL_SIZE,
                 "speed": 3,
                 "move_timer": random.uniform(2, 5),
+                "change_dir_timer": time.time() + 5,
             }
+
+
 
 
 def move_enemy(enemy, field, enemies, player_pos, delta_time):
@@ -174,10 +194,18 @@ def move_enemy(enemy, field, enemies, player_pos, delta_time):
         (0, 1): "enemy_tank_down",
     }
 
-    if "direction" not in enemy:
+    current_time = time.time()
+
+    if enemy.get("stuck_time") and current_time >= enemy["stuck_time"]:
         enemy["direction"] = random.choice(list(directions.keys()))
-        print(f"Spawning enemy with direction: {enemy['direction']}")
-        enemy["move_timer"] = time.time()
+        enemy["texture"] = directions[enemy["direction"]]
+        enemy["stuck_time"] = None
+        enemy["change_dir_timer"] = current_time + 5
+
+    if current_time >= enemy.get("change_dir_timer", 0):
+        enemy["direction"] = random.choice(list(directions.keys()))
+        enemy["texture"] = directions[enemy["direction"]]
+        enemy["change_dir_timer"] = current_time + 5
 
     dx, dy = enemy["direction"]
     move_distance = enemy["speed"] * delta_time
@@ -188,9 +216,11 @@ def move_enemy(enemy, field, enemies, player_pos, delta_time):
         enemy["x"], enemy["y"] = new_x, new_y
         enemy["row"] = int(enemy["y"] // CELL_SIZE)
         enemy["col"] = int(enemy["x"] // CELL_SIZE)
-        enemy["texture"] = directions[enemy["direction"]]
+        enemy["stuck_time"] = None
     else:
-        enemy["texture"] = directions[enemy["direction"]]
+        if enemy.get("stuck_time") is None:
+            enemy["stuck_time"] = current_time + 1
+
 
 
 def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tolerance=1):
@@ -227,6 +257,10 @@ def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tole
     return False
 
 
+
+
+
+
 def main():
     running = True
     clock = pygame.time.Clock()
@@ -244,6 +278,9 @@ def main():
     player_direction = "player_tank_up"
     tolerance = 1
     game_over = False
+    enemy_bullets = {}
+    FIRE_COOLDOWN = 2.0
+    enemy_next_shot = {}
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -255,23 +292,72 @@ def main():
     base_row, base_col = rows - 2, cols // 2
     emblem_rect = pygame.Rect(base_col * CELL_SIZE, base_row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-    def handle_bullet_collision(bullet_x, bullet_y, enemies):
+    def enemy_fire(enemy):
+        bullet_x = enemy["x"] + CELL_SIZE // 2
+        bullet_y = enemy["y"] + CELL_SIZE // 2
+
+        direction_map = {
+            (0, -1): "bullet_up",
+            (0, 1): "bullet_down",
+            (-1, 0): "bullet_left",
+            (1, 0): "bullet_right",
+        }
+
+        bullet_texture = direction_map.get(enemy["direction"], "bullet_up")
+
+        return {
+            "x": bullet_x,
+            "y": bullet_y,
+            "direction": enemy["direction"],
+            "shooter": "enemy",
+            "texture": bullet_texture,
+            "last_shot_time": time.time()
+        }
+
+    def update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot):
+        current_time = time.time()
+
+        for enemy in enemies:
+            enemy_id = id(enemy)
+
+            if enemy_id not in enemy_next_shot:
+                enemy_next_shot[enemy_id] = current_time
+
+            if enemy_id not in enemy_bullets or enemy_bullets[enemy_id] is None:
+                if current_time >= enemy_next_shot[enemy_id]:
+                    enemy_bullets[enemy_id] = enemy_fire(enemy)
+
+        for enemy_id, bullet in list(enemy_bullets.items()):
+            if bullet is None:
+                continue
+
+            bullet["x"] += bullet["direction"][0] * 10
+            bullet["y"] += bullet["direction"][1] * 10
+
+            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
+                enemy_bullets[enemy_id] = None
+                enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
+
+    def handle_bullet_collision(bullet_x, bullet_y, enemies, bullet):
+        if bullet is None:
+            return False
+
         nonlocal enemy_tanks_count, game_over
         col = int(bullet_x // CELL_SIZE)
         row = int(bullet_y // CELL_SIZE)
+
+        bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
 
         for enemy in enemies:
             enemy_x = enemy["x"]
             enemy_y = enemy["y"]
             enemy_rect = pygame.Rect(enemy_x, enemy_y, CELL_SIZE, CELL_SIZE)
-            bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
 
-            if bullet_rect.colliderect(enemy_rect):
+            if bullet_rect.colliderect(enemy_rect) and bullet["shooter"] != "enemy":
                 enemy_tanks_count -= 1
                 enemies.remove(enemy)
                 return True
 
-        bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
         if bullet_rect.colliderect(emblem_rect):
             game_over = True
             return True
@@ -364,6 +450,8 @@ def main():
             player_pos[0] += dy / CELL_SIZE
             player_pos[1] += dx / CELL_SIZE
 
+        update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot)
+
         current_time = time.time()
         if len(enemies) < max_enemy_on_field and (current_time - last_spawn_time >= enemy_spawn_timer):
             spawn_success = False
@@ -380,10 +468,9 @@ def main():
                         "col": col,
                         "x": col * CELL_SIZE,
                         "y": row * CELL_SIZE,
-                        "direction": (0, 1),
-                        "texture": "enemy_tank_down",
                         "speed": 3,
                     })
+
                     last_spawn_time = current_time
                     spawn_success = True
                 attempts += 1
@@ -394,7 +481,7 @@ def main():
         if bullet:
             bullet["x"] += bullet["direction"][0] * 10
             bullet["y"] += bullet["direction"][1] * 10
-            if handle_bullet_collision(bullet["x"], bullet["y"], enemies):
+            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
                 bullet = None
             elif not (0 <= bullet["x"] < FIELD_WIDTH and 0 <= bullet["y"] < FIELD_HEIGHT):
                 bullet = None
@@ -402,6 +489,10 @@ def main():
         screen.fill(WHITE)
         draw_field(field, player_pos, player_direction)
         draw_interface(lives, enemy_tanks_count)
+
+        for bullet in enemy_bullets.values():
+            if bullet:
+                screen.blit(TEXTURES["bullet_up"], (bullet["x"], bullet["y"]))
 
         if bullet:
             screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
