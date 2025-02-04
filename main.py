@@ -275,7 +275,7 @@ def main():
     field, player_pos = generate_field(rows, cols)
     lives = 3
     enemy_tanks_count = 3
-    max_enemy_on_field = 5
+    max_enemy_on_field = 1
     enemies = []
     enemy_spawn_timer = 5
     last_spawn_time = time.time()
@@ -289,6 +289,7 @@ def main():
     FIRE_COOLDOWN = 2.0
     enemy_next_shot = {}
     logging.basicConfig(level=logging.DEBUG)
+    processed_bullets = set()
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -321,6 +322,18 @@ def main():
             "texture": bullet_texture
         }
 
+    def move_bullet(bullet, enemies):
+        step_x, step_y = bullet["direction"]
+
+        for _ in range(10):
+            bullet["x"] += step_x
+            bullet["y"] += step_y
+
+            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
+                return True
+
+        return False
+
     def update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot):
         current_time = time.time()
 
@@ -328,27 +341,18 @@ def main():
             enemy_id = id(enemy)
 
             if enemy_id not in enemy_next_shot:
+                enemy_next_shot[enemy_id] = current_time
+
+            if enemy_id not in enemy_bullets:
+                enemy_bullets[enemy_id] = []
+
+            if len(enemy_bullets[enemy_id]) == 0 and current_time >= enemy_next_shot[enemy_id]:
+                new_bullet = enemy_fire(enemy)
+                enemy_bullets[enemy_id].append(new_bullet)
                 enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
 
-            if enemy_id in enemy_bullets and enemy_bullets[enemy_id] is not None:
-                bullet = enemy_bullets[enemy_id]
-
-                bullet["x"] += bullet["direction"][0] * 10
-                bullet["y"] += bullet["direction"][1] * 10
-
-                if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
-                    enemy_bullets[enemy_id] = None
-                    enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
-                elif not (0 <= bullet["x"] < FIELD_WIDTH and 0 <= bullet["y"] < FIELD_HEIGHT):
-                    enemy_bullets[enemy_id] = None
-
-                continue
-
-            if current_time >= enemy_next_shot[enemy_id]:
-                new_bullet = enemy_fire(enemy)
-                if new_bullet:
-                    enemy_bullets[enemy_id] = new_bullet
-                    enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
+        for enemy_id in list(enemy_bullets.keys()):
+            enemy_bullets[enemy_id] = [bullet for bullet in enemy_bullets[enemy_id] if not move_bullet(bullet, enemies)]
 
     def handle_bullet_collision(bullet_x, bullet_y, enemies, bullet):
         if bullet is None:
@@ -362,8 +366,13 @@ def main():
         if 0 <= row < len(field) and 0 <= col < len(field[0]):
             tile = field[row][col]
             if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
-                tile["durability"] -= 1  # Уменьшаем прочность стены
+                if "hit" in bullet:
+                    return True
+
+                tile["durability"] -= 1
+                bullet["hit"] = True
                 logging.debug(f"Wall hit at ({row}, {col}). Durability: {tile['durability']}")
+
                 if tile["durability"] == 3:
                     tile["type"] = "wall2"
                 elif tile["durability"] == 2:
@@ -372,17 +381,11 @@ def main():
                     tile["type"] = "wall4"
                 elif tile["durability"] <= 0:
                     field[row][col] = None
+                    return True
 
                 return True
 
-        for enemy in enemies:
-            enemy_rect = pygame.Rect(enemy["x"], enemy["y"], CELL_SIZE, CELL_SIZE)
-            if bullet_rect.colliderect(enemy_rect) and bullet["shooter"] != "enemy":
-                enemies.remove(enemy)
-                return True
-
-        if bullet_rect.colliderect(emblem_rect):
-            game_over = True
+        if bullet_x < 0 or bullet_x >= FIELD_WIDTH or bullet_y < 0 or bullet_y >= FIELD_HEIGHT:
             return True
 
         return False
@@ -496,8 +499,8 @@ def main():
         draw_field(field, player_pos, player_direction)
         draw_interface(lives, enemy_tanks_count)
 
-        for bullet in enemy_bullets.values():
-            if bullet:
+        for bullets in enemy_bullets.values():
+            for bullet in bullets:
                 screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
 
         if bullet:
