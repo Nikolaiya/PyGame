@@ -1,7 +1,6 @@
 import pygame
 import random
 import time
-import logging
 
 pygame.init()
 
@@ -9,6 +8,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 FIELD_WIDTH, FIELD_HEIGHT = 600, 600
 CELL_SIZE = 40
 FPS = 10
+
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -150,12 +150,12 @@ def draw_interface(lives, enemy_tanks):
         y = 10 + (i // 2) * 20
         screen.blit(TEXTURES["enemy_icon"], (x, y))
     for i in range(lives):
-        x = 10 + i * 20
+        x = 610 + i * 20
         y = SCREEN_HEIGHT - 30
         screen.blit(TEXTURES["life_icon"], (x, y))
 
 
-def spawn_enemy(field, enemies):
+def spawn_enemy(field, enemies, player_pos):
     directions = {
         (-1, 0): "enemy_tank_left",
         (1, 0): "enemy_tank_right",
@@ -170,15 +170,29 @@ def spawn_enemy(field, enemies):
         row = random.randint(0, 2)
         col = random.randint(1, len(field[0]) - 2)
 
-        tile = field[row][col]
+        enemy_rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        if tile and tile["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
+        if field[row][col] and field[row][col]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
             attempts += 1
             continue
 
-        enemy_rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-
         if any(enemy_rect.colliderect(pygame.Rect(e["x"], e["y"], CELL_SIZE, CELL_SIZE)) for e in enemies):
+            attempts += 1
+            continue
+
+        valid_spawn = True
+        for r in range(max(0, row - 1), min(len(field), row + 2)):
+            for c in range(max(0, col - 1), min(len(field[0]), col + 2)):
+                if field[r][c] and field[r][c]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
+                    valid_spawn = False
+
+        if not valid_spawn:
+            attempts += 1
+            continue
+
+        player_x, player_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
+        player_rect = pygame.Rect(player_x, player_y, CELL_SIZE, CELL_SIZE)
+        if enemy_rect.colliderect(player_rect):
             attempts += 1
             continue
 
@@ -196,6 +210,10 @@ def spawn_enemy(field, enemies):
         }
 
     return None
+
+
+
+
 
 
 def move_enemy(enemy, field, enemies, player_pos, delta_time):
@@ -274,22 +292,20 @@ def main():
     rows, cols = FIELD_HEIGHT // CELL_SIZE, FIELD_WIDTH // CELL_SIZE
     field, player_pos = generate_field(rows, cols)
     lives = 3
-    enemy_tanks_count = 3
-    max_enemy_on_field = 1
+    enemy_tanks = 3
+    max_enemy_on_field = 15
     enemies = []
-    enemy_spawn_timer = 5
+    enemy_spawn_timer = 2
     last_spawn_time = time.time()
-    bullet = None
-    last_shot_time = 0
-    tank_speed = 3
+    tank_speed = 10
     player_direction = "player_tank_up"
     tolerance = 1
     game_over = False
     enemy_bullets = {}
-    FIRE_COOLDOWN = 2.0
     enemy_next_shot = {}
-    logging.basicConfig(level=logging.DEBUG)
-    processed_bullets = set()
+    player_bullets = []
+    animation_state = False
+
 
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
@@ -300,6 +316,7 @@ def main():
 
     base_row, base_col = rows - 2, cols // 2
     emblem_rect = pygame.Rect(base_col * CELL_SIZE, base_row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+    player_rect = pygame.Rect(player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
     def enemy_fire(enemy):
         bullet_x = enemy["x"] + CELL_SIZE // 2
@@ -322,19 +339,20 @@ def main():
             "texture": bullet_texture
         }
 
-    def move_bullet(bullet, enemies):
+    def move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field):
         step_x, step_y = bullet["direction"]
 
         for _ in range(10):
             bullet["x"] += step_x
             bullet["y"] += step_y
 
-            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
+            if handle_bullet_collision(bullet["x"], bullet["y"], bullet, emblem_rect, player_rect, enemies, player_pos,
+                                       field):
                 return True
 
         return False
 
-    def update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot):
+    def update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot, emblem_rect, player_rect, player_pos):
         current_time = time.time()
 
         for enemy in enemies:
@@ -346,32 +364,50 @@ def main():
             if enemy_id not in enemy_bullets:
                 enemy_bullets[enemy_id] = []
 
-            if len(enemy_bullets[enemy_id]) == 0 and current_time >= enemy_next_shot[enemy_id]:
+            if current_time >= enemy_next_shot[enemy_id]:
                 new_bullet = enemy_fire(enemy)
                 enemy_bullets[enemy_id].append(new_bullet)
-                enemy_next_shot[enemy_id] = current_time + FIRE_COOLDOWN
+                enemy_next_shot[enemy_id] = current_time + 2.0
 
         for enemy_id in list(enemy_bullets.keys()):
-            enemy_bullets[enemy_id] = [bullet for bullet in enemy_bullets[enemy_id] if not move_bullet(bullet, enemies)]
+            enemy_bullets[enemy_id] = [bullet for bullet in enemy_bullets[enemy_id]
+                                       if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
 
-    def handle_bullet_collision(bullet_x, bullet_y, enemies, bullet):
+    def handle_bullet_collision(bullet_x, bullet_y, bullet, emblem_rect, player_rect, enemies, player_pos, field):
+        nonlocal lives, enemy_tanks
+
         if bullet is None:
             return False
+
+        bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
+
+        if bullet.get("shooter") == "enemy":
+            if bullet_rect.colliderect(player_rect):
+                lives -= 1
+
+                player_pos[0] = rows - 2
+                player_pos[1] = (cols // 2) - 2
+
+                player_rect.x = player_pos[1] * CELL_SIZE
+                player_rect.y = player_pos[0] * CELL_SIZE
+
+                return True
+
+        for enemy in enemies[:]:
+            enemy_rect = pygame.Rect(enemy["x"], enemy["y"], CELL_SIZE, CELL_SIZE)
+            if bullet.get("shooter") == "player" and bullet_rect.colliderect(enemy_rect):
+                enemies.remove(enemy)
+                enemy_tanks -= 1
+                return True
 
         col = int(bullet_x // CELL_SIZE)
         row = int(bullet_y // CELL_SIZE)
 
-        bullet_rect = pygame.Rect(bullet_x, bullet_y, CELL_SIZE // 2, CELL_SIZE // 2)
-
         if 0 <= row < len(field) and 0 <= col < len(field[0]):
             tile = field[row][col]
-            if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
-                if "hit" in bullet:
-                    return True
 
+            if tile and tile["type"] in ["wall", "wall2", "wall3", "wall4"]:
                 tile["durability"] -= 1
-                bullet["hit"] = True
-                logging.debug(f"Wall hit at ({row}, {col}). Durability: {tile['durability']}")
 
                 if tile["durability"] == 3:
                     tile["type"] = "wall2"
@@ -381,12 +417,15 @@ def main():
                     tile["type"] = "wall4"
                 elif tile["durability"] <= 0:
                     field[row][col] = None
-                    return True
 
                 return True
 
-        if bullet_x < 0 or bullet_x >= FIELD_WIDTH or bullet_y < 0 or bullet_y >= FIELD_HEIGHT:
-            return True
+            if tile and tile["type"] == "unbreakable_wall":
+                return True
+
+            if bullet_rect.colliderect(emblem_rect):
+                game_over = True
+                return True
 
         return False
 
@@ -426,40 +465,49 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                current_time = time.time()
-                if bullet is None and current_time - last_shot_time:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     tank_x = int(player_pos[1] * CELL_SIZE)
                     tank_y = int(player_pos[0] * CELL_SIZE)
                     dx, dy = directions_map[player_direction][:2]
-                    bullet = {
+
+                    new_bullet = {
                         "x": tank_x + CELL_SIZE // 2,
                         "y": tank_y + CELL_SIZE // 2,
                         "direction": (dx, dy),
                         "texture": directions_map[player_direction][2],
+                        "shooter": "player",
                     }
-                    last_shot_time = time.time()
+                    player_bullets.append(new_bullet)
 
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
+
         if keys[pygame.K_w]:
             dy = -tank_speed
-            player_direction = "player_tank_up"
+            animation_state = not animation_state
+            player_direction = "player_tank_up2" if animation_state else "player_tank_up"
+
         elif keys[pygame.K_a]:
             dx = -tank_speed
-            player_direction = "player_tank_left"
+            animation_state = not animation_state
+            player_direction = "player_tank_left2" if animation_state else "player_tank_left"
+
         elif keys[pygame.K_s]:
             dy = tank_speed
-            player_direction = "player_tank_down"
+            animation_state = not animation_state
+            player_direction = "player_tank_down2" if animation_state else "player_tank_down"
+
         elif keys[pygame.K_d]:
             dx = tank_speed
-            player_direction = "player_tank_right"
+            animation_state = not animation_state
+            player_direction = "player_tank_right2" if animation_state else "player_tank_right"
 
         new_pos = [player_pos[0] + dy / CELL_SIZE, player_pos[1] + dx / CELL_SIZE]
         if not is_collision(new_pos, enemies):
             player_pos[0] += dy / CELL_SIZE
             player_pos[1] += dx / CELL_SIZE
 
-        update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot)
+        update_enemy_shooting(enemies, enemy_bullets, enemy_next_shot, emblem_rect, player_rect, player_pos)
 
         current_time = time.time()
         if len(enemies) < max_enemy_on_field and (current_time - last_spawn_time >= enemy_spawn_timer):
@@ -487,29 +535,31 @@ def main():
         for enemy in enemies:
             move_enemy(enemy, field, enemies, player_pos, delta_time=1)
 
-        if bullet:
-            bullet["x"] += bullet["direction"][0] * 10
-            bullet["y"] += bullet["direction"][1] * 10
-            if handle_bullet_collision(bullet["x"], bullet["y"], enemies, bullet):
-                bullet = None
-            elif not (0 <= bullet["x"] < FIELD_WIDTH and 0 <= bullet["y"] < FIELD_HEIGHT):
-                bullet = None
+        player_rect.x = player_pos[1] * CELL_SIZE
+        player_rect.y = player_pos[0] * CELL_SIZE
+
+        player_bullets = [bullet for bullet in player_bullets
+                          if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
+
+        enemy_bullets = {enemy_id: [bullet for bullet in bullets
+                                    if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
+                         for enemy_id, bullets in enemy_bullets.items()}
 
         screen.fill(WHITE)
         draw_field(field, player_pos, player_direction)
-        draw_interface(lives, enemy_tanks_count)
+        draw_interface(lives, enemy_tanks)
 
         for bullets in enemy_bullets.values():
             for bullet in bullets:
                 screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
 
-        if bullet:
+        for bullet in player_bullets:
             screen.blit(TEXTURES[bullet["texture"]], (bullet["x"], bullet["y"]))
 
         for enemy in enemies:
             screen.blit(TEXTURES[enemy["texture"]], (enemy["x"], enemy["y"]))
 
-        if enemy_tanks_count == 0:
+        if enemy_tanks == 0:
             game_over = True
 
         pygame.display.flip()
