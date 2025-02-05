@@ -9,7 +9,6 @@ FIELD_WIDTH, FIELD_HEIGHT = 600, 600
 CELL_SIZE = 40
 FPS = 10
 
-
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
@@ -22,7 +21,9 @@ TEXTURES = {
     "unbreakable_wall": pygame.image.load("neraz(nov).png"),
     "grass": pygame.image.load("trava(nov).png"),
     "base": pygame.image.load("gerb.png"),
-    "water": pygame.image.load("voda(nov).png"),
+    "water": pygame.image.load("voda1(nov).png"),
+    "water2": pygame.image.load("voda2(nov).png"),
+    "water3": pygame.image.load("voda3(nov).png"),
     "player_tank_up": pygame.image.load("tank1_up.png"),
     "player_tank_down": pygame.image.load("tank1_down.png"),
     "player_tank_left": pygame.image.load("tank1_left.png"),
@@ -172,7 +173,8 @@ def spawn_enemy(field, enemies, player_pos):
 
         enemy_rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        if field[row][col] and field[row][col]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
+        if field[row][col] and field[row][col]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3",
+                                                           "wall4"]:
             attempts += 1
             continue
 
@@ -183,7 +185,8 @@ def spawn_enemy(field, enemies, player_pos):
         valid_spawn = True
         for r in range(max(0, row - 1), min(len(field), row + 2)):
             for c in range(max(0, col - 1), min(len(field[0]), col + 2)):
-                if field[r][c] and field[r][c]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3", "wall4"]:
+                if field[r][c] and field[r][c]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3",
+                                                           "wall4"]:
                     valid_spawn = False
 
         if not valid_spawn:
@@ -212,10 +215,6 @@ def spawn_enemy(field, enemies, player_pos):
     return None
 
 
-
-
-
-
 def move_enemy(enemy, field, enemies, player_pos, delta_time):
     directions = {
         (-1, 0): "enemy_tank_left",
@@ -226,15 +225,27 @@ def move_enemy(enemy, field, enemies, player_pos, delta_time):
 
     current_time = time.time()
 
+    if "direction" not in enemy:
+        enemy["direction"] = random.choice(list(directions.keys()))
+
+    if time.time() % 0.2 < 0.1:
+        enemy["texture"] = directions[enemy["direction"]] + "2"
+    else:
+        enemy["texture"] = directions[enemy["direction"]]
+
     if enemy.get("stuck_time") and current_time >= enemy["stuck_time"]:
         enemy["direction"] = random.choice(list(directions.keys()))
         enemy["texture"] = directions[enemy["direction"]]
+        if time.time() % 0.2 < 0.1:
+            enemy["texture"] += "2"
         enemy["stuck_time"] = None
         enemy["change_dir_timer"] = current_time + 5
 
     if current_time >= enemy.get("change_dir_timer", 0):
         enemy["direction"] = random.choice(list(directions.keys()))
         enemy["texture"] = directions[enemy["direction"]]
+        if time.time() % 0.2 < 0.1:
+            enemy["texture"] += "2"
         enemy["change_dir_timer"] = current_time + 5
 
     dx, dy = enemy["direction"]
@@ -271,6 +282,7 @@ def is_enemy_collision(enemy, enemy_x, enemy_y, enemies, player_pos, field, tole
     if enemy_rect.colliderect(player_rect):
         return True
 
+
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             if tile and tile["type"] not in ["grass", "base"]:
@@ -306,13 +318,16 @@ def main():
     player_bullets = []
     animation_state = False
 
-
     directions_map = {
         "player_tank_up": (0, -1, "bullet_up"),
         "player_tank_down": (0, 1, "bullet_down"),
         "player_tank_left": (-1, 0, "bullet_left"),
         "player_tank_right": (1, 0, "bullet_right"),
     }
+
+    water_textures = ["voda1(nov).png", "voda2(nov).png", "voda1(nov).png"]
+    current_water_index = 0
+    last_water_update = time.time()
 
     base_row, base_col = rows - 2, cols // 2
     emblem_rect = pygame.Rect(base_col * CELL_SIZE, base_row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
@@ -374,7 +389,7 @@ def main():
                                        if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
 
     def handle_bullet_collision(bullet_x, bullet_y, bullet, emblem_rect, player_rect, enemies, player_pos, field):
-        nonlocal lives, enemy_tanks
+        nonlocal lives, enemy_tanks, player_direction, game_over
 
         if bullet is None:
             return False
@@ -390,6 +405,8 @@ def main():
 
                 player_rect.x = player_pos[1] * CELL_SIZE
                 player_rect.y = player_pos[0] * CELL_SIZE
+
+                player_direction = "player_tank_up"
 
                 return True
 
@@ -425,7 +442,6 @@ def main():
 
             if bullet_rect.colliderect(emblem_rect):
                 game_over = True
-                return True
 
         return False
 
@@ -465,19 +481,26 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    tank_x = int(player_pos[1] * CELL_SIZE)
-                    tank_y = int(player_pos[0] * CELL_SIZE)
-                    dx, dy = directions_map[player_direction][:2]
+                if len(player_bullets) > 0:
+                    continue
 
-                    new_bullet = {
-                        "x": tank_x + CELL_SIZE // 2,
-                        "y": tank_y + CELL_SIZE // 2,
-                        "direction": (dx, dy),
-                        "texture": directions_map[player_direction][2],
-                        "shooter": "player",
-                    }
-                    player_bullets.append(new_bullet)
+                tank_x = int(player_pos[1] * CELL_SIZE)
+                tank_y = int(player_pos[0] * CELL_SIZE)
+                base_direction = player_direction.replace("2", "")
+
+                new_bullet = {
+                    "x": tank_x + CELL_SIZE // 2,
+                    "y": tank_y + CELL_SIZE // 2,
+                    "direction": directions_map[base_direction][:2],
+                    "texture": directions_map[base_direction][2],
+                    "shooter": "player",
+                }
+                player_bullets.append(new_bullet)
+
+        if time.time() - last_water_update >= 0.3:
+            current_water_index = (current_water_index + 1) % len(water_textures)
+            TEXTURES["water"] = pygame.image.load(water_textures[current_water_index])
+            last_water_update = time.time()
 
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0
@@ -560,6 +583,9 @@ def main():
             screen.blit(TEXTURES[enemy["texture"]], (enemy["x"], enemy["y"]))
 
         if enemy_tanks == 0:
+            game_over = True
+
+        if lives == 0:
             game_over = True
 
         pygame.display.flip()
