@@ -110,10 +110,14 @@ def generate_field(rows, cols):
     while water_tiles < 6:
         row = random.randint(1, rows - 2)
         col = random.randint(1, cols - 2)
-        if field[row][col] is None and not (
-                base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
-            field[row][col] = {"type": "water", "durability": -1}
-            water_tiles += 1
+
+        if (row <= 3 and any(field[r][col] and field[r][col]["type"] == "unbreakable_wall" for r in range(0, 3))) or \
+                field[row][col] is not None or \
+                (base_row - 2 <= row <= base_row + 2 and base_col - 2 <= col <= base_col + 2):
+            continue
+
+        field[row][col] = {"type": "water", "durability": -2}
+        water_tiles += 1
 
     unbreakable = 0
     while unbreakable < 6:
@@ -184,7 +188,7 @@ def spawn_enemy(field, enemies, player_pos):
 
         enemy_rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        if field[row][col] and field[row][col]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3",
+        if field[row][col] and field[row][col]["type"] in ["water", "water2", "water3", "unbreakable_wall", "wall", "wall2", "wall3",
                                                            "wall4"]:
             attempts += 1
             continue
@@ -196,7 +200,7 @@ def spawn_enemy(field, enemies, player_pos):
         valid_spawn = True
         for r in range(max(0, row - 1), min(len(field), row + 2)):
             for c in range(max(0, col - 1), min(len(field[0]), col + 2)):
-                if field[r][c] and field[r][c]["type"] in ["water", "unbreakable_wall", "wall", "wall2", "wall3",
+                if field[r][c] and field[r][c]["type"] in ["water", "water2", "water3", "unbreakable_wall", "wall", "wall2", "wall3",
                                                            "wall4"]:
                     valid_spawn = False
 
@@ -336,7 +340,7 @@ def main():
     field, player_pos = generate_field(rows, cols)
     lives = 3
     enemy_tanks = 3
-    max_enemy_on_field = 1
+    max_enemy_on_field = 15
     enemies = []
     enemy_spawn_timer = 2
     last_spawn_time = time.time()
