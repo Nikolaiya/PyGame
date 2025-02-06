@@ -163,12 +163,6 @@ def draw_field(field, player_pos, player_direction, tower_direction, enemies):
             enemy_texture.set_alpha(150)
         screen.blit(enemy_texture, (enemy["x"], enemy["y"]))
 
-    for row_idx, row in enumerate(field):
-        for col_idx, tile in enumerate(row):
-            if tile and tile["type"] == "grass":
-                x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-                screen.blit(TEXTURES["grass"], (x, y))
-
 
 
 def draw_interface(lives, enemy_tanks):
@@ -353,9 +347,9 @@ def main():
     rows, cols = FIELD_HEIGHT // CELL_SIZE, FIELD_WIDTH // CELL_SIZE
     field, player_pos = generate_field(rows, cols)
     lives = 3
-    max_enemy_on_field = 1
+    max_enemy_on_field = 3
     enemies = []
-    enemy_spawn_timer = 20
+    enemy_spawn_timer = 2
     last_spawn_time = time.time()
     tank_speed = 10
     player_direction = "player_tank_up"
@@ -743,6 +737,13 @@ def main():
 
         for enemy in enemies:
             screen.blit(TEXTURES[enemy["texture"]], (enemy["x"], enemy["y"]))
+
+        # Отрисовка травы после врагов
+        for row_idx, row in enumerate(field):
+            for col_idx, tile in enumerate(row):
+                if tile and tile["type"] == "grass":
+                    x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
+                    screen.blit(TEXTURES["grass"], (x, y))
 
         if check_water_collision(player_pos, field):
             lives -= 1
