@@ -24,6 +24,10 @@ TEXTURES = {
     "water": pygame.image.load("water1.png"),
     "water2": pygame.image.load("water2.png"),
     "water3": pygame.image.load("water3.png"),
+    "player_tower_up": pygame.image.load("tower_up.png"),
+    "player_tower_down": pygame.image.load("tower_down.png"),
+    "player_tower_left": pygame.image.load("tower_left.png"),
+    "player_tower_right": pygame.image.load("tower_right.png"),
     "player_tank_up": pygame.image.load("tank1_up.png"),
     "player_tank_down": pygame.image.load("tank1_down.png"),
     "player_tank_left": pygame.image.load("tank1_left.png"),
@@ -40,7 +44,6 @@ TEXTURES = {
     "enemy_tank_down2": pygame.image.load("tank2_down2.png"),
     "enemy_tank_left2": pygame.image.load("tank2_left2.png"),
     "enemy_tank_right2": pygame.image.load("tank2_right2.png"),
-    "enemy_tank": pygame.image.load("tank2_up.png"),
     "enemy_icon": pygame.image.load("mini_tank.png"),
     "life_icon": pygame.image.load("life.png"),
     "bullet_up": pygame.image.load("bullet_up.png"),
@@ -131,31 +134,36 @@ def generate_field(rows, cols):
     return field, [base_row, base_col - 2]
 
 
-def draw_field(field, player_pos, player_direction, enemies):
+def draw_field(field, player_pos, player_direction, tower_direction, enemies):
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
             screen.blit(TEXTURES["background"], (x, y))
-            if tile and tile["type"] not in ["grass", "base"]:
+
+    for row_idx, row in enumerate(field):
+        for col_idx, tile in enumerate(row):
+            if tile and tile["type"] and tile["type"] != "grass":
+                x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
                 screen.blit(TEXTURES[tile["type"]], (x, y))
 
     for enemy in enemies:
-        screen.blit(TEXTURES[enemy["texture"]], (enemy["x"], enemy["y"]))
+        enemy_texture = TEXTURES[enemy["texture"]].copy()
+        if is_in_grass(enemy["x"], enemy["y"], field):
+            enemy_texture.set_alpha(150)
+        screen.blit(enemy_texture, (enemy["x"], enemy["y"]))
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
+
+    tower_x = tank_x + CELL_SIZE // 45
+    tower_y = tank_y + CELL_SIZE // 45
+    screen.blit(TEXTURES[tower_direction], (tower_x, tower_y))
 
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
             if tile and tile["type"] == "grass":
                 x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
                 screen.blit(TEXTURES["grass"], (x, y))
-
-    for row_idx, row in enumerate(field):
-        for col_idx, tile in enumerate(row):
-            if tile and tile["type"] == "base":
-                x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
-                screen.blit(TEXTURES["base"], (x, y))
 
 
 
@@ -340,7 +348,7 @@ def main():
     field, player_pos = generate_field(rows, cols)
     lives = 3
     enemy_tanks = 3
-    max_enemy_on_field = 15
+    max_enemy_on_field = 2
     enemies = []
     enemy_spawn_timer = 2
     last_spawn_time = time.time()
@@ -352,12 +360,13 @@ def main():
     enemy_next_shot = {}
     player_bullets = []
     animation_state = False
+    tower_direction = "player_tower_up"
 
     directions_map = {
-        "player_tank_up": (0, -1, "bullet_up"),
-        "player_tank_down": (0, 1, "bullet_down"),
-        "player_tank_left": (-1, 0, "bullet_left"),
-        "player_tank_right": (1, 0, "bullet_right"),
+        "player_tower_up": (0, -1, "bullet_up"),
+        "player_tower_down": (0, 1, "bullet_down"),
+        "player_tower_left": (-1, 0, "bullet_left"),
+        "player_tower_right": (1, 0, "bullet_right"),
     }
 
     water_textures = ["water1.png", "water2.png", "water3.png"]
@@ -424,7 +433,7 @@ def main():
                                        if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
 
     def handle_bullet_collision(bullet_x, bullet_y, bullet, emblem_rect, player_rect, enemies, player_pos, field):
-        nonlocal lives, enemy_tanks, player_direction, game_over
+        nonlocal lives, enemy_tanks, player_direction, tower_direction, game_over
 
         if bullet is None:
             return False
@@ -442,6 +451,7 @@ def main():
                 player_rect.y = player_pos[0] * CELL_SIZE
 
                 player_direction = "player_tank_up"
+                tower_direction = "player_tower_up"
 
                 return True
 
@@ -540,7 +550,7 @@ def main():
 
                 tank_x = int(player_pos[1] * CELL_SIZE)
                 tank_y = int(player_pos[0] * CELL_SIZE)
-                base_direction = player_direction.replace("2", "")
+                base_direction = tower_direction.replace("2", "")
 
                 new_bullet = {
                     "x": tank_x + CELL_SIZE // 2,
@@ -582,6 +592,15 @@ def main():
             dx = current_tank_speed
             animation_state = not animation_state
             player_direction = "player_tank_right2" if animation_state else "player_tank_right"
+
+        if keys[pygame.K_UP]:
+            tower_direction = "player_tower_up"
+        elif keys[pygame.K_DOWN]:
+            tower_direction = "player_tower_down"
+        elif keys[pygame.K_LEFT]:
+            tower_direction = "player_tower_left"
+        elif keys[pygame.K_RIGHT]:
+            tower_direction = "player_tower_right"
 
         new_pos = [player_pos[0] + dy / CELL_SIZE, player_pos[1] + dx / CELL_SIZE]
         if not is_collision(new_pos, enemies, emblem_rect):
@@ -627,7 +646,7 @@ def main():
                          for enemy_id, bullets in enemy_bullets.items()}
 
         screen.fill(WHITE)
-        draw_field(field, player_pos, player_direction, enemies)
+        draw_field(field, player_pos, player_direction, tower_direction, enemies)
         draw_interface(lives, enemy_tanks)
 
         for bullets in enemy_bullets.values():
@@ -644,6 +663,7 @@ def main():
             lives -= 1
             player_pos = [rows - 2, (cols // 2) - 2]
             player_direction = "player_tank_up"
+            tower_direction = "player_tower_up"
 
         def game_over_screen(result_texture):
             overlay_y = -FIELD_HEIGHT
@@ -652,7 +672,7 @@ def main():
 
             while overlay_y < 0:
                 screen.fill(BLACK)
-                draw_field(field, player_pos, player_direction, enemies)
+                draw_field(field, player_pos, player_direction, tower_direction, enemies)
                 draw_interface(lives, enemy_tanks)
                 screen.blit(result_texture, (0, overlay_y))
                 pygame.display.flip()
