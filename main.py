@@ -13,49 +13,52 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 TEXTURES = {
-    "background": pygame.image.load("fon.png"),
-    "wall": pygame.image.load("wall1.png"),
-    "wall2": pygame.image.load("wall2.png"),
-    "wall3": pygame.image.load("wall3.png"),
-    "wall4": pygame.image.load("wall4.png"),
-    "unbreakable_wall": pygame.image.load("unbreakable.png"),
-    "grass": pygame.image.load("grass.png"),
-    "base": pygame.image.load("emblem.png"),
-    "water": pygame.image.load("water1.png"),
-    "water2": pygame.image.load("water2.png"),
-    "water3": pygame.image.load("water3.png"),
-    "player_tower_up": pygame.image.load("tower_up.png"),
-    "player_tower_down": pygame.image.load("tower_down.png"),
-    "player_tower_left": pygame.image.load("tower_left.png"),
-    "player_tower_right": pygame.image.load("tower_right.png"),
-    "player_tank_up": pygame.image.load("tank1_up.png"),
-    "player_tank_down": pygame.image.load("tank1_down.png"),
-    "player_tank_left": pygame.image.load("tank1_left.png"),
-    "player_tank_right": pygame.image.load("tank1_right.png"),
-    "enemy_tank_up": pygame.image.load("tank2_up.png"),
-    "enemy_tank_down": pygame.image.load("tank2_down.png"),
-    "enemy_tank_left": pygame.image.load("tank2_left.png"),
-    "enemy_tank_right": pygame.image.load("tank2_right.png"),
-    "player_tank_up2": pygame.image.load("tank1_up2.png"),
-    "player_tank_down2": pygame.image.load("tank1_down2.png"),
-    "player_tank_left2": pygame.image.load("tank1_left2.png"),
-    "player_tank_right2": pygame.image.load("tank1_right2.png"),
-    "enemy_tank_up2": pygame.image.load("tank2_up2.png"),
-    "enemy_tank_down2": pygame.image.load("tank2_down2.png"),
-    "enemy_tank_left2": pygame.image.load("tank2_left2.png"),
-    "enemy_tank_right2": pygame.image.load("tank2_right2.png"),
-    "enemy_icon": pygame.image.load("mini_tank.png"),
-    "life_icon": pygame.image.load("life.png"),
-    "bullet_up": pygame.image.load("bullet_up.png"),
-    "bullet_down": pygame.image.load("bullet_down.png"),
-    "bullet_left": pygame.image.load("bullet_left.png"),
-    "bullet_right": pygame.image.load("bullet_right.png"),
-    "enemy_bullet_up": pygame.image.load("enemy_bullet_up.png"),
-    "enemy_bullet_down": pygame.image.load("enemy_bullet_down.png"),
-    "enemy_bullet_left": pygame.image.load("enemy_bullet_left.png"),
-    "enemy_bullet_right": pygame.image.load("enemy_bullet_right.png"),
-    "fon_lose": pygame.image.load("game_over_lose.png"),
-    "fon_win": pygame.image.load("game_over_win.png"),
+    "background": pygame.image.load("textures/fon.png"),
+    "wall": pygame.image.load("textures/wall1.png"),
+    "wall2": pygame.image.load("textures/wall2.png"),
+    "wall3": pygame.image.load("textures/wall3.png"),
+    "wall4": pygame.image.load("textures/wall4.png"),
+    "unbreakable_wall": pygame.image.load("textures/unbreakable.png"),
+    "grass": pygame.image.load("textures/grass.png"),
+    "base": pygame.image.load("textures/emblem.png"),
+    "water": pygame.image.load("textures/water1.png"),
+    "water2": pygame.image.load("textures/water2.png"),
+    "water3": pygame.image.load("textures/water3.png"),
+    "player_tower_up": pygame.image.load("textures/tower_up.png"),
+    "player_tower_down": pygame.image.load("textures/tower_down.png"),
+    "player_tower_left": pygame.image.load("textures/tower_left.png"),
+    "player_tower_right": pygame.image.load("textures/tower_right.png"),
+    "player_tank_up": pygame.image.load("textures/tank1_up.png"),
+    "player_tank_down": pygame.image.load("textures/tank1_down.png"),
+    "player_tank_left": pygame.image.load("textures/tank1_left.png"),
+    "player_tank_right": pygame.image.load("textures/tank1_right.png"),
+    "enemy_tank_up": pygame.image.load("textures/tank2_up.png"),
+    "enemy_tank_down": pygame.image.load("textures/tank2_down.png"),
+    "enemy_tank_left": pygame.image.load("textures/tank2_left.png"),
+    "enemy_tank_right": pygame.image.load("textures/tank2_right.png"),
+    "player_tank_up2": pygame.image.load("textures/tank1_up2.png"),
+    "player_tank_down2": pygame.image.load("textures/tank1_down2.png"),
+    "player_tank_left2": pygame.image.load("textures/tank1_left2.png"),
+    "player_tank_right2": pygame.image.load("textures/tank1_right2.png"),
+    "enemy_tank_up2": pygame.image.load("textures/tank2_up2.png"),
+    "enemy_tank_down2": pygame.image.load("textures/tank2_down2.png"),
+    "enemy_tank_left2": pygame.image.load("textures/tank2_left2.png"),
+    "enemy_tank_right2": pygame.image.load("textures/tank2_right2.png"),
+    "enemy_icon": pygame.image.load("textures/mini_tank.png"),
+    "life_icon": pygame.image.load("textures/life.png"),
+    "bullet_up": pygame.image.load("textures/bullet_up.png"),
+    "bullet_down": pygame.image.load("textures/bullet_down.png"),
+    "bullet_left": pygame.image.load("textures/bullet_left.png"),
+    "bullet_right": pygame.image.load("textures/bullet_right.png"),
+    "enemy_bullet_up": pygame.image.load("textures/enemy_bullet_up.png"),
+    "enemy_bullet_down": pygame.image.load("textures/enemy_bullet_down.png"),
+    "enemy_bullet_left": pygame.image.load("textures/enemy_bullet_left.png"),
+    "enemy_bullet_right": pygame.image.load("textures/enemy_bullet_right.png"),
+    "fon_lose": pygame.image.load("textures/game_over_lose.png"),
+    "fon_win": pygame.image.load("textures/game_over_win.png"),
+    "exit": pygame.image.load("textures/quit.png"),
+    "again": pygame.image.load("textures/again.png"),
+    "continue": pygame.image.load("textures/cont.png"),
 }
 
 TEXTURES["enemy_icon"] = pygame.transform.scale(TEXTURES["enemy_icon"], (20, 20))
@@ -146,11 +149,6 @@ def draw_field(field, player_pos, player_direction, tower_direction, enemies):
                 x, y = col_idx * CELL_SIZE, row_idx * CELL_SIZE
                 screen.blit(TEXTURES[tile["type"]], (x, y))
 
-    for enemy in enemies:
-        enemy_texture = TEXTURES[enemy["texture"]].copy()
-        if is_in_grass(enemy["x"], enemy["y"], field):
-            enemy_texture.set_alpha(150)
-        screen.blit(enemy_texture, (enemy["x"], enemy["y"]))
 
     tank_x, tank_y = player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE
     screen.blit(TEXTURES[player_direction], (tank_x, tank_y))
@@ -158,6 +156,12 @@ def draw_field(field, player_pos, player_direction, tower_direction, enemies):
     tower_x = tank_x + CELL_SIZE // 45
     tower_y = tank_y + CELL_SIZE // 45
     screen.blit(TEXTURES[tower_direction], (tower_x, tower_y))
+
+    for enemy in enemies:
+        enemy_texture = TEXTURES[enemy["texture"]].copy()
+        if is_in_grass(enemy["x"], enemy["y"], field):
+            enemy_texture.set_alpha(150)
+        screen.blit(enemy_texture, (enemy["x"], enemy["y"]))
 
     for row_idx, row in enumerate(field):
         for col_idx, tile in enumerate(row):
@@ -169,10 +173,12 @@ def draw_field(field, player_pos, player_direction, tower_direction, enemies):
 
 def draw_interface(lives, enemy_tanks):
     pygame.draw.rect(screen, BLACK, (FIELD_WIDTH, 0, SCREEN_WIDTH - FIELD_WIDTH, SCREEN_HEIGHT))
+
     for i in range(enemy_tanks):
         x = FIELD_WIDTH + 10 + (i % 2) * 20
         y = 10 + (i // 2) * 20
         screen.blit(TEXTURES["enemy_icon"], (x, y))
+
     for i in range(lives):
         x = 610 + i * 20
         y = SCREEN_HEIGHT - 30
@@ -347,10 +353,9 @@ def main():
     rows, cols = FIELD_HEIGHT // CELL_SIZE, FIELD_WIDTH // CELL_SIZE
     field, player_pos = generate_field(rows, cols)
     lives = 3
-    enemy_tanks = 3
-    max_enemy_on_field = 2
+    max_enemy_on_field = 1
     enemies = []
-    enemy_spawn_timer = 2
+    enemy_spawn_timer = 20
     last_spawn_time = time.time()
     tank_speed = 10
     player_direction = "player_tank_up"
@@ -362,6 +367,16 @@ def main():
     animation_state = False
     tower_direction = "player_tower_up"
 
+    enemy_tanks = 1
+    base_enemy_speed = 3.0
+
+    current_enemy_tanks = enemy_tanks
+    current_enemy_speed = base_enemy_speed
+
+    game_over_screen_active = False
+    game_over_result_texture = None
+    overlay_y = -FIELD_HEIGHT
+
     directions_map = {
         "player_tower_up": (0, -1, "bullet_up"),
         "player_tower_down": (0, 1, "bullet_down"),
@@ -369,7 +384,7 @@ def main():
         "player_tower_right": (1, 0, "bullet_right"),
     }
 
-    water_textures = ["water1.png", "water2.png", "water3.png"]
+    water_textures = ["textures/water1.png", "textures/water2.png", "textures/water3.png"]
     current_water_index = 0
     last_water_update = time.time()
 
@@ -433,7 +448,7 @@ def main():
                                        if not move_bullet(bullet, emblem_rect, player_rect, enemies, player_pos, field)]
 
     def handle_bullet_collision(bullet_x, bullet_y, bullet, emblem_rect, player_rect, enemies, player_pos, field):
-        nonlocal lives, enemy_tanks, player_direction, tower_direction, game_over
+        nonlocal lives, enemy_tanks, player_direction, tower_direction, game_over, game_over_result_texture
 
         if bullet is None:
             return False
@@ -486,7 +501,8 @@ def main():
                 return True
 
             if bullet_rect.colliderect(emblem_rect):
-                game_over_screen(TEXTURES["fon_lose"])
+                game_over = True
+                game_over_result_texture = TEXTURES["fon_lose"]
 
         return False
 
@@ -536,9 +552,78 @@ def main():
                             return True
         return False
 
+    def reset_game_state():
+        nonlocal game_over, game_over_screen_active, overlay_y, enemies, enemy_tanks, lives, player_pos, player_direction, tower_direction, player_bullets, enemy_bullets, enemy_next_shot, last_spawn_time
+
+        game_over = False
+        game_over_screen_active = False
+        overlay_y = -FIELD_HEIGHT
+        enemies.clear()
+        enemy_tanks = current_enemy_tanks
+        lives = 3
+        player_pos = [rows - 2, (cols // 2) - 2]
+        player_direction = "player_tank_up"
+        tower_direction = "player_tower_up"
+        player_bullets = []
+        enemy_bullets = {}
+        enemy_next_shot = {}
+        last_spawn_time = time.time()
+
+        field, player_pos = generate_field(rows, cols)
+
     while running:
-        if game_over:
-            running = False
+        if game_over and not game_over_screen_active:
+            game_over_screen_active = True
+            if enemy_tanks == 0:
+                game_over_result_texture = TEXTURES["fon_win"]
+            else:
+                game_over_result_texture = TEXTURES["fon_lose"]
+            overlay_y = -FIELD_HEIGHT
+
+        if game_over_screen_active:
+            if overlay_y < 0:
+                overlay_y += CELL_SIZE // 20
+                if overlay_y >= 0:
+                    overlay_y = 0
+
+            screen.fill(BLACK)
+            draw_field(field, player_pos, player_direction, tower_direction, enemies)
+            draw_interface(lives, enemy_tanks)
+            screen.blit(game_over_result_texture, (0, overlay_y))
+
+            if overlay_y == 0:
+                if enemy_tanks == 0:
+                    screen.blit(TEXTURES["continue"], (SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2 - 60))
+
+                screen.blit(TEXTURES["again"], (SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2))
+                screen.blit(TEXTURES["exit"], (SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2 + 60))
+
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                click = pygame.mouse.get_pressed()
+
+                btn_continue = pygame.Rect(SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2 - 60, 100, 40)
+                btn_again = pygame.Rect(SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2, 100, 40)
+                btn_exit = pygame.Rect(SCREEN_WIDTH // 2 + 215, SCREEN_HEIGHT // 2 + 60, 100, 40)
+
+                if click[0]:
+                    if btn_continue.collidepoint(mouse_x, mouse_y):
+                        current_enemy_tanks += 1
+                        current_enemy_speed += 0.1
+                        reset_game_state()
+
+                    elif btn_again.collidepoint(mouse_x, mouse_y):
+                        current_enemy_tanks = enemy_tanks
+                        current_enemy_speed = base_enemy_speed
+                        main()
+
+                    elif btn_exit.collidepoint(mouse_x, mouse_y):
+                        pygame.quit()
+                        exit()
+
+            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
             continue
 
         for event in pygame.event.get():
@@ -625,7 +710,7 @@ def main():
                         "col": col,
                         "x": col * CELL_SIZE,
                         "y": row * CELL_SIZE,
-                        "speed": 3,
+                        "speed": current_enemy_speed,
                     })
 
                     last_spawn_time = current_time
@@ -665,37 +750,17 @@ def main():
             player_direction = "player_tank_up"
             tower_direction = "player_tower_up"
 
-        def game_over_screen(result_texture):
-            overlay_y = -FIELD_HEIGHT
-            step_size = CELL_SIZE
-            delay = 500
-
-            while overlay_y < 0:
-                screen.fill(BLACK)
-                draw_field(field, player_pos, player_direction, tower_direction, enemies)
-                draw_interface(lives, enemy_tanks)
-                screen.blit(result_texture, (0, overlay_y))
-                pygame.display.flip()
-                pygame.time.delay(delay)
-                overlay_y += step_size
-
-            screen.blit(result_texture, (0, 0))
-            pygame.display.flip()
-            pygame.time.delay(2000)
-            pygame.quit()
-            exit()
-
         if enemy_tanks == 0:
-            game_over_screen(TEXTURES["fon_win"])
+            game_over = True
 
         if lives == 0 or player_rect.colliderect(emblem_rect):
-            game_over_screen(TEXTURES["fon_lose"])
+            game_over = True
 
         pygame.display.flip()
         clock.tick(FPS)
 
     pygame.quit()
-
+    exit()
 
 if __name__ == "__main__":
     main()
