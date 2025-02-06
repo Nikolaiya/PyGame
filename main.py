@@ -638,6 +638,19 @@ def main():
                     "texture": directions_map[base_direction][2],
                     "shooter": "player",
                 }
+                if base_direction == "player_tower_up":
+                    new_bullet["x"] = tank_x + CELL_SIZE // 2 - 5
+                    new_bullet["y"] = tank_y - 5
+                elif base_direction == "player_tower_down":
+                    new_bullet["x"] = tank_x + CELL_SIZE // 2 - 5
+                    new_bullet["y"] = tank_y + CELL_SIZE - 15
+                elif base_direction == "player_tower_left":
+                    new_bullet["x"] = tank_x - 5
+                    new_bullet["y"] = tank_y + CELL_SIZE // 2 - 5
+                elif base_direction == "player_tower_right":
+                    new_bullet["x"] = tank_x + CELL_SIZE - 15
+                    new_bullet["y"] = tank_y + CELL_SIZE // 2 - 5
+
                 player_bullets.append(new_bullet)
 
         if time.time() - last_water_update >= 0.3:
